@@ -5,6 +5,7 @@ import { prisma } from "../lib/prisma";
 
 export const checkout = async (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
+  const { note } = req.body;
 
   const cartItems = await prisma.cartItem.findMany({
     where: { userId },
@@ -31,6 +32,7 @@ export const checkout = async (req: AuthRequest, res: Response) => {
       data: {
         userId,
         total,
+        note,
         items: {
           create: cartItems.map((item) => ({
             bookId: item.bookId,

@@ -64,6 +64,11 @@ export const OrdersPage = () => {
                     </span>
                   </div>
                 ))}
+                {order.note && (
+                  <p className="text-slate-400 text-sm mt-2">
+                    Note: {order.note}
+                  </p>
+                )}
               </div>
             </div>
           ))}

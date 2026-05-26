@@ -43,5 +43,6 @@ export interface Order {
   id: string;
   total: number;
   createdAt: string;
+  note?: string;
   items: OrderItem[];
 }

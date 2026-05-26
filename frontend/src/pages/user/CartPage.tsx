@@ -10,6 +10,7 @@ export const CartPage = () => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [checkingOut, setCheckingOut] = useState(false);
+  const [note, setNote] = useState("");
   const navigate = useNavigate();
 
   const fetchCart = async () => {
@@ -49,7 +50,7 @@ export const CartPage = () => {
   const checkout = async () => {
     setCheckingOut(true);
     try {
-      await api.post("/orders/checkout");
+      await api.post("/orders/checkout", { note });
       toast.success("Order placed successfully!");
       navigate("/orders");
     } catch (err: any) {
@@ -135,6 +136,16 @@ export const CartPage = () => {
               </Button>
             </div>
           ))}
+
+          <div className="mt-6">
+            <label className="text-slate-400 text-sm">Note (optional)</label>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              className="w-full mt-2 p-3 rounded-lg bg-slate-900 border border-slate-800 text-white"
+              placeholder="Add message for admin or delivery..."
+            />
+          </div>
 
           <div className="border-t border-slate-800 pt-6 flex items-center justify-between">
             <div>
