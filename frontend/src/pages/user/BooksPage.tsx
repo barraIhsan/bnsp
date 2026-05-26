@@ -1,28 +1,48 @@
 import { useEffect, useState } from "react";
 import api from "../../api/axios";
-import type { Book, Category } from "../../types";
+import type { Book, Category, CartItem } from "../../types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Search } from "lucide-react";
 import { toast } from "sonner";
 
+type BookWithCart = Book & {
+  cartQty: number;
+};
+
 export const BooksPage = () => {
-  const [books, setBooks] = useState<Book[]>([]);
+  const [books, setBooks] = useState<BookWithCart[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const fetchBooks = async () => {
+  const fetchData = async () => {
     try {
-      const { data } = await api.get("/books", {
-        params: {
-          search: search || undefined,
-          categoryId: categoryId || undefined,
-        },
+      const [booksRes, cartRes] = await Promise.all([
+        api.get("/books", {
+          params: {
+            search: search || undefined,
+            categoryId: categoryId || undefined,
+          },
+        }),
+        api.get("/cart"),
+      ]);
+
+      const cartItems: CartItem[] = cartRes.data.data;
+      setCart(cartItems);
+
+      const mapped: BookWithCart[] = booksRes.data.data.map((b: Book) => {
+        const found = cartItems.find((c) => c.book.id === b.id);
+        return {
+          ...b,
+          cartQty: found?.quantity ?? 0,
+        };
       });
-      setBooks(data.data);
+
+      setBooks(mapped);
     } finally {
       setLoading(false);
     }
@@ -33,15 +53,42 @@ export const BooksPage = () => {
   }, []);
 
   useEffect(() => {
-    fetchBooks();
+    fetchData();
   }, [search, categoryId]);
 
-  const addToCart = async (bookId: string) => {
+  const updateCart = async (bookId: string, nextQty: number) => {
     try {
-      await api.post("/cart", { bookId, quantity: 1 });
-      toast.success("Added to cart");
+      const { data } = await api.get("/cart");
+      const latestCart: CartItem[] = data.data;
+
+      const existing = latestCart.find((c) => c.book.id === bookId);
+
+      if (nextQty === 0) {
+        if (existing) {
+          await api.delete(`/cart/${existing.id}`);
+        }
+      } else if (!existing) {
+        await api.post("/cart", { bookId, quantity: nextQty });
+      } else {
+        await api.put(`/cart/${existing.id}`, { quantity: nextQty });
+      }
+
+      const refreshed = await api.get("/cart");
+      const cartItems: CartItem[] = refreshed.data.data;
+
+      setCart(cartItems);
+
+      setBooks((prev) =>
+        prev.map((b) => {
+          const found = cartItems.find((c) => c.book.id === b.id);
+          return {
+            ...b,
+            cartQty: found?.quantity ?? 0,
+          };
+        }),
+      );
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to add to cart");
+      toast.error(err.response?.data?.message || "Failed to update cart");
     }
   };
 
@@ -66,6 +113,7 @@ export const BooksPage = () => {
             className="pl-9 bg-slate-900 border-slate-700 text-white w-64"
           />
         </div>
+
         <div className="flex gap-2 flex-wrap">
           <Button
             size="sm"
@@ -73,12 +121,13 @@ export const BooksPage = () => {
             onClick={() => setCategoryId("")}
             className={
               categoryId === ""
-                ? "bg-amber-500 hover:bg-amber-600 text-slate-950 hover:text-slate-950 transition-colors"
-                : "border-slate-600 bg-slate-800 text-slate-100 hover:text-white hover:bg-slate-700"
+                ? "bg-amber-500 hover:bg-amber-600 text-slate-950"
+                : "border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700"
             }
           >
             All
           </Button>
+
           {categories.map((c) => (
             <Button
               key={c.id}
@@ -87,8 +136,8 @@ export const BooksPage = () => {
               onClick={() => setCategoryId(c.id)}
               className={
                 categoryId === c.id
-                  ? "bg-amber-500 hover:bg-amber-600 text-slate-950 hover:text-slate-950 transition-colors"
-                  : "border-slate-600 bg-slate-800 text-slate-100 hover:text-white hover:bg-slate-700"
+                  ? "bg-amber-500 hover:bg-amber-600 text-slate-950"
+                  : "border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700"
               }
             >
               {c.name}
@@ -102,49 +151,82 @@ export const BooksPage = () => {
         <p className="text-slate-400">Loading...</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {books.map((book) => (
-            <div
-              key={book.id}
-              className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col gap-3 hover:border-amber-900/50 transition-colors"
-            >
-              <div>
-                <Badge
-                  variant="outline"
-                  className="border-amber-800 text-amber-500 text-xs mb-2"
-                >
-                  {book.category.name}
-                </Badge>
-                <h3
-                  className="text-white font-semibold text-lg leading-tight"
-                  style={{ fontFamily: "'Playfair Display', serif" }}
-                >
-                  {book.title}
-                </h3>
-                <p className="text-slate-400 text-sm mt-0.5">{book.author}</p>
-              </div>
-              <p className="text-slate-500 text-sm line-clamp-2">
-                {book.description}
-              </p>
-              <div className="mt-auto flex items-center justify-between">
+          {books.map((book) => {
+            const qty = book.cartQty ?? 0;
+
+            return (
+              <div
+                key={book.id}
+                className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col gap-3 hover:border-amber-900/50 transition-colors"
+              >
                 <div>
-                  <p className="text-amber-400 font-bold text-lg">
-                    Rp {book.price.toLocaleString("id-ID")}
-                  </p>
-                  <p className="text-slate-500 text-xs">
-                    {book.stock} in stock
-                  </p>
+                  <Badge
+                    variant="outline"
+                    className="border-amber-800 text-amber-500 text-xs mb-2"
+                  >
+                    {book.category.name}
+                  </Badge>
+
+                  <h3 className="text-white font-semibold text-lg leading-tight">
+                    {book.title}
+                  </h3>
+
+                  <p className="text-slate-400 text-sm">{book.author}</p>
                 </div>
-                <Button
-                  size="sm"
-                  disabled={book.stock === 0}
-                  onClick={() => addToCart(book.id)}
-                  className="bg-amber-500 hover:bg-amber-400 text-slate-950"
-                >
-                  <ShoppingCart className="w-4 h-4" />
-                </Button>
+
+                <p className="text-slate-500 text-sm line-clamp-2">
+                  {book.description}
+                </p>
+
+                <div className="mt-auto flex items-center justify-between">
+                  <div>
+                    <p className="text-amber-400 font-bold text-lg">
+                      Rp {book.price.toLocaleString("id-ID")}
+                    </p>
+                    <p className="text-slate-500 text-xs">
+                      {book.stock} in stock
+                    </p>
+                  </div>
+
+                  {qty === 0 ? (
+                    <Button
+                      size="sm"
+                      disabled={book.stock === 0}
+                      onClick={() => updateCart(book.id, 1)}
+                      className="bg-amber-500 hover:bg-amber-600 text-slate-950"
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                    </Button>
+                  ) : (
+                    <div className="flex items-center gap-2 text-slate-100">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 w-7 border-slate-700 text-slate-950"
+                        onClick={() =>
+                          updateCart(book.id, Math.max(0, qty - 1))
+                        }
+                      >
+                        -
+                      </Button>
+
+                      <span className="w-6 text-center">{qty}</span>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 w-7 border-slate-700 text-slate-950"
+                        disabled={qty >= book.stock}
+                        onClick={() => updateCart(book.id, qty + 1)}
+                      >
+                        +
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
