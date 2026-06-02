@@ -34,23 +34,25 @@ export const getBookById = async (req: Request, res: Response) => {
 
 export const createBook = async (req: Request, res: Response) => {
   const { title, author, description, price, stock, categoryId } = req.body;
-  if (
-    !title ||
-    !author ||
-    !description ||
-    price == null ||
-    stock == null ||
-    !categoryId
-  )
+  if (!title || !author || !description || price == null || stock == null)
     throw new ResponseError(400, "All fields are required");
 
-  const category = await prisma.category.findUnique({
-    where: { id: categoryId },
-  });
-  if (!category) throw new ResponseError(404, "Category not found");
+  if (categoryId) {
+    const category = await prisma.category.findUnique({
+      where: { id: categoryId },
+    });
+    if (!category) throw new ResponseError(404, "Category not found");
+  }
 
   const book = await prisma.book.create({
-    data: { title, author, description, price, stock, categoryId },
+    data: {
+      title,
+      author,
+      description,
+      price,
+      stock,
+      categoryId: categoryId ?? null,
+    },
     include: { category: { select: { id: true, name: true } } },
   });
   res.status(201).json({ status: "success", data: book });
@@ -72,7 +74,14 @@ export const updateBook = async (req: Request, res: Response) => {
 
   const book = await prisma.book.update({
     where: { id },
-    data: { title, author, description, price, stock, categoryId },
+    data: {
+      title,
+      author,
+      description,
+      price,
+      stock,
+      categoryId: categoryId ?? null,
+    },
     include: { category: { select: { id: true, name: true } } },
   });
   res.json({ status: "success", data: book });

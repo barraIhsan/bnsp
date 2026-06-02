@@ -160,12 +160,14 @@ export const BooksPage = () => {
                 className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col gap-3 hover:border-amber-900/50 transition-colors"
               >
                 <div>
-                  <Badge
-                    variant="outline"
-                    className="border-amber-800 text-amber-500 text-xs mb-2"
-                  >
-                    {book.category.name}
-                  </Badge>
+                  {book.category && (
+                    <Badge
+                      variant="outline"
+                      className="border-amber-800 text-amber-500 text-xs mb-2"
+                    >
+                      {book.category.name}
+                    </Badge>
+                  )}
 
                   <h3 className="text-white font-semibold text-lg leading-tight">
                     {book.title}

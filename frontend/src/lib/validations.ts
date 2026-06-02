@@ -62,10 +62,10 @@ export const bookSchema = z.object({
     .trim()
     .max(2000, "Description is too long"),
   price: z.coerce
-    .number({ invalid_type_error: "Price must be a number" })
+    .number("Price must be a number")
     .min(1, "Price must be at least 1"),
   stock: z.coerce
-    .number({ invalid_type_error: "Stock must be a number" })
+    .number("Stock must be a number")
     .min(0, "Stock cannot be negative"),
   categoryId: z.string().min(1, "Category is required"),
 });

@@ -21,7 +21,7 @@ export interface Book {
   price: number;
   stock: number;
   categoryId: string;
-  category: { id: string; name: string };
+  category: { id: string; name: string } | null;
   createdAt: string;
 }
 

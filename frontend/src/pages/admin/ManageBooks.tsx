@@ -124,7 +124,8 @@ export const ManageBooks = () => {
                 {book.title}
               </p>
               <p className="text-slate-400 text-sm">
-                {book.author} · {book.category.name}
+                {book.author} ·{" "}
+                {book.category ? book.category.name : "Uncategorized"}
               </p>
               <p className="text-slate-500 text-sm line-clamp-1 mt-1">
                 {book.description}
