@@ -7,14 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Search } from "lucide-react";
 import { toast } from "sonner";
 
-type BookWithCart = Book & {
-  cartQty: number;
-};
+type BookWithCart = Book & { cartQty: number };
 
 export const BooksPage = () => {
   const [books, setBooks] = useState<BookWithCart[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -32,15 +29,11 @@ export const BooksPage = () => {
       ]);
 
       const cartItems: CartItem[] = cartRes.data.data;
-      setCart(cartItems);
 
-      const mapped: BookWithCart[] = booksRes.data.data.map((b: Book) => {
-        const found = cartItems.find((c) => c.book.id === b.id);
-        return {
-          ...b,
-          cartQty: found?.quantity ?? 0,
-        };
-      });
+      const mapped: BookWithCart[] = booksRes.data.data.map((b: Book) => ({
+        ...b,
+        cartQty: cartItems.find((c) => c.book.id === b.id)?.quantity ?? 0,
+      }));
 
       setBooks(mapped);
     } finally {
@@ -60,32 +53,23 @@ export const BooksPage = () => {
     try {
       const { data } = await api.get("/cart");
       const latestCart: CartItem[] = data.data;
-
       const existing = latestCart.find((c) => c.book.id === bookId);
 
       if (nextQty === 0) {
-        if (existing) {
-          await api.delete(`/cart/${existing.id}`);
-        }
+        if (existing) await api.delete(`/cart/${existing.id}`);
       } else if (!existing) {
         await api.post("/cart", { bookId, quantity: nextQty });
       } else {
         await api.put(`/cart/${existing.id}`, { quantity: nextQty });
       }
 
-      const refreshed = await api.get("/cart");
-      const cartItems: CartItem[] = refreshed.data.data;
-
-      setCart(cartItems);
+      const refreshed: CartItem[] = (await api.get("/cart")).data.data;
 
       setBooks((prev) =>
-        prev.map((b) => {
-          const found = cartItems.find((c) => c.book.id === b.id);
-          return {
-            ...b,
-            cartQty: found?.quantity ?? 0,
-          };
-        }),
+        prev.map((b) => ({
+          ...b,
+          cartQty: refreshed.find((c) => c.book.id === b.id)?.quantity ?? 0,
+        })),
       );
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to update cart");
@@ -113,7 +97,6 @@ export const BooksPage = () => {
             className="pl-9 bg-slate-900 border-slate-700 text-white w-64"
           />
         </div>
-
         <div className="flex gap-2 flex-wrap">
           <Button
             size="sm"
@@ -127,7 +110,6 @@ export const BooksPage = () => {
           >
             All
           </Button>
-
           {categories.map((c) => (
             <Button
               key={c.id}
@@ -153,7 +135,6 @@ export const BooksPage = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {books.map((book) => {
             const qty = book.cartQty ?? 0;
-
             return (
               <div
                 key={book.id}
@@ -168,11 +149,9 @@ export const BooksPage = () => {
                       {book.category.name}
                     </Badge>
                   )}
-
                   <h3 className="text-white font-semibold text-lg leading-tight">
                     {book.title}
                   </h3>
-
                   <p className="text-slate-400 text-sm">{book.author}</p>
                 </div>
 
@@ -211,9 +190,7 @@ export const BooksPage = () => {
                       >
                         -
                       </Button>
-
                       <span className="w-6 text-center">{qty}</span>
-
                       <Button
                         size="sm"
                         variant="outline"

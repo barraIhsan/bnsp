@@ -27,7 +27,7 @@ export const ManageCategories = () => {
   const create = async () => {
     const result = categorySchema.safeParse({ name: newName });
     if (!result.success) {
-      setNewError(result.error.errors[0].message);
+      setNewError(result.error.issues[0].message);
       return;
     }
     try {
@@ -44,7 +44,7 @@ export const ManageCategories = () => {
   const update = async (id: string) => {
     const result = categorySchema.safeParse({ name: editName });
     if (!result.success) {
-      setEditError(result.error.errors[0].message);
+      setEditError(result.error.issues[0].message);
       return;
     }
     try {
