@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express, { Express } from "express";
+import cors from "cors";
 import { errorMiddleware } from "./middleware/error";
 import authRoute from "./routes/auth";
 import bookRoute from "./routes/book";
@@ -10,6 +11,12 @@ import userRoute from "./routes/user";
 
 const app: Express = express();
 app.use(express.json());
+
+app.use(
+  cors({
+    origin: ["http://localhost:5173", "bnsp-frontend.vercel.app"],
+  }),
+);
 
 app.use("/api/auth", authRoute);
 app.use("/api/users", userRoute);
